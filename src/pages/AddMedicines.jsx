@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
+const API_URL = "https://mediclear-assignment3-dyj8.vercel.app";
+
 function AddMedicines() {
   const navigate = useNavigate();
 
@@ -13,6 +15,8 @@ function AddMedicines() {
     notes: "",
   });
 
+  const [message, setMessage] = useState("");
+
   const handleChange = (e) => {
     setFormData({
       ...formData,
@@ -20,10 +24,34 @@ function AddMedicines() {
     });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    localStorage.setItem("mediclear_plan", JSON.stringify(formData));
-    navigate("/todays-plan");
+    setMessage("Saving medicine plan...");
+
+    try {
+      const response = await fetch(`${API_URL}/medicine-plans`, {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify(formData),
+});
+
+const result = await response.json();
+
+if (!response.ok) {
+  throw new Error(result.error || "Failed to save medicine plan");
+}
+
+      setMessage("Medicine plan saved successfully.");
+
+      setTimeout(() => {
+        navigate("/todays-plan");
+      }, 1000);
+    } catch (error) {
+  console.error(error);
+  setMessage(error.message);
+}
   };
 
   return (
@@ -91,6 +119,8 @@ function AddMedicines() {
 
         <button type="submit">Save Medicine Plan</button>
       </form>
+
+      {message && <p className="small-text">{message}</p>}
     </div>
   );
 }

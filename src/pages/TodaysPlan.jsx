@@ -1,8 +1,33 @@
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+
+const API_URL = "https://mediclear-assignment3-dyj8.vercel.app";
 
 function TodaysPlan() {
   const navigate = useNavigate();
-  const savedPlan = JSON.parse(localStorage.getItem("mediclear_plan"));
+  const [plans, setPlans] = useState([]);
+  const [message, setMessage] = useState("Loading saved medicine plans...");
+
+  useEffect(() => {
+    const fetchPlans = async () => {
+      try {
+        const response = await fetch(`${API_URL}/medicine-plans`);
+
+        if (!response.ok) {
+          throw new Error("Failed to load medicine plans");
+        }
+
+        const data = await response.json();
+        setPlans(data);
+        setMessage("");
+      } catch (error) {
+        console.error(error);
+        setMessage("Unable to load saved medicine plans.");
+      }
+    };
+
+    fetchPlans();
+  }, []);
 
   return (
     <div>
@@ -10,29 +35,33 @@ function TodaysPlan() {
 
       <p className="small-text">Your saved medicine plan is shown below.</p>
 
-      {!savedPlan ? (
+      {message && <p className="small-text">{message}</p>}
+
+      {plans.length === 0 && !message ? (
         <div className="card">
           <p>No medicine plan saved yet.</p>
         </div>
       ) : (
-        <div className="card">
-          <h2>{savedPlan.medicine_name}</h2>
-          <p>
-            <strong>Patient:</strong> {savedPlan.full_name}
-          </p>
-          <p>
-            <strong>Dosage:</strong> {savedPlan.dosage}
-          </p>
-          <p>
-            <strong>Timing:</strong> {savedPlan.timing}
-          </p>
-          <p>
-            <strong>Notes:</strong> {savedPlan.notes}
-          </p>
-          <p>
-            <strong>Status:</strong> saved
-          </p>
-        </div>
+        plans.map((plan) => (
+          <div className="card" key={plan.id}>
+            <h2>{plan.medicine_name}</h2>
+            <p>
+              <strong>Patient:</strong> {plan.full_name}
+            </p>
+            <p>
+              <strong>Dosage:</strong> {plan.dosage}
+            </p>
+            <p>
+              <strong>Timing:</strong> {plan.timing}
+            </p>
+            <p>
+              <strong>Notes:</strong> {plan.notes}
+            </p>
+            <p>
+              <strong>Status:</strong> {plan.status}
+            </p>
+          </div>
+        ))
       )}
 
       <button onClick={() => navigate("/helpful-questions")}>
