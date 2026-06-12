@@ -2,6 +2,7 @@ from http.server import BaseHTTPRequestHandler
 import json
 import os
 import urllib.request
+import urllib.error
 
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
@@ -28,23 +29,27 @@ def supabase_request(method, endpoint, data=None):
     )
 
     with urllib.request.urlopen(request) as response:
-        return json.loads(response.read().decode("utf-8"))
+        response_body = response.read().decode("utf-8")
+        if response_body:
+            return json.loads(response_body)
+        return []
 
 class handler(BaseHTTPRequestHandler):
-    def send_json(self, status_code, data):
-        self.send_response(status_code)
-        self.send_header("Content-type", "application/json")
+    def send_cors_headers(self):
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+
+    def send_json(self, status_code, data):
+        self.send_response(status_code)
+        self.send_cors_headers()
+        self.send_header("Content-Type", "application/json")
         self.end_headers()
         self.wfile.write(json.dumps(data).encode("utf-8"))
 
     def do_OPTIONS(self):
-        self.send_response(200)
-        self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.send_response(204)
+        self.send_cors_headers()
         self.end_headers()
 
     def do_GET(self):
@@ -70,8 +75,8 @@ class handler(BaseHTTPRequestHandler):
             try:
                 content_length = int(self.headers.get("Content-Length", 0))
                 body = self.rfile.read(content_length)
-                data = json.loads(body.decode("utf-8"))
 
+                data = json.loads(body.decode("utf-8"))
                 data["status"] = "saved"
 
                 result = supabase_request(
@@ -85,6 +90,8 @@ class handler(BaseHTTPRequestHandler):
                     "data": result
                 })
 
+            except urllib.error.HTTPError as e:
+                self.send_json(e.code, {"error": e.read().decode("utf-8")})
             except Exception as e:
                 self.send_json(500, {"error": str(e)})
             return
